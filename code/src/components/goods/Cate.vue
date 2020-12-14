@@ -30,8 +30,8 @@
             </template>
 
         <template slot="opt" scope="scope">
-          <el-button type="primary" icon="el-icon-edit" size="small ">编辑</el-button>
-          <el-button type="danger" icon="el-icon-delete" size="small ">删除</el-button>
+          <el-button type="primary" icon="el-icon-edit" size="small" @click="edit(scope.row)">编辑</el-button>
+          <el-button type="danger" icon="el-icon-delete" size="small" @click="remove(scope.row)">删除</el-button>
         </template>
         </tree-table>
 
@@ -65,6 +65,26 @@
     <el-button type="primary" @click="addCate">确 定</el-button>
   </span>
 </el-dialog>
+
+<el-dialog
+  title="修改分类"
+  :visible.sync="classificationVisible"
+  width="50%"
+  @close="editDialogClosed"
+>
+  <el-form :model="editForm" :rules="editFormRules" ref="editRuleForm" label-width="100px">
+  <el-form-item label="分类名称" prop="cat_name">
+    <el-input v-model="editForm.cat_name"></el-input>
+  </el-form-item>
+</el-form>
+
+  <span slot="footer" class="dialog-footer">
+    <el-button @click="classificationVisible = false">取 消</el-button>
+    <el-button type="primary" @click="editTo">确 定</el-button>
+  </span>
+</el-dialog>
+
+
 
  </div>
 </template>
@@ -121,7 +141,14 @@ export default {
         checkStrictly : true,
         expandTrigger : 'hover'
    },
-    selectedKeys: []
+    selectedKeys: [],
+    classificationVisible:false,
+    editForm:{},
+    editFormRules:{
+        cat_name: [
+          { required: true, message: '请输入分类名称', trigger: 'blur' }
+        ] 
+    }
  }
  },
  created(){
@@ -184,7 +211,37 @@ export default {
       this.selectedKeys = []
       this.addCateForm.cat_level = 0
       this.addCateForm.cat_pid = 0
-    } 
+    },
+    async edit(info){
+        const { data : res } = await this.$http.get('categories/'+info.cat_id)
+        if(res.meta.status!==200) return this.$message.error('无法编辑操作')
+        this.editForm = res.data
+        this.classificationVisible = true
+    },
+    async editTo(){
+        const { data : res} = await this.$http.put('categories/'+this.editForm.cat_id,{
+            cat_name:this.editForm.cat_name
+        })
+        if(res.meta.status!==200) return this.$message.error('编辑失败')
+        this.$message.success('编辑成功')
+        this.getCateList()
+        this.classificationVisible = false
+    },
+    editDialogClosed(){
+        this.editForm = {}
+    },
+    async remove(info){
+        const res = await this.$confirm('此操作将永久删除该分类, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).catch(err=>err)
+        if(res !== 'confirm' ) return this.$message.info('已取消删除')
+        const { data } = await this.$http.delete('categories/'+ info.cat_id)
+        if( data.meta.status !== 200 ) return this.$message.error('删除分类失败！')
+        this.$message.success('删除分类成功！')
+        this.getCateList()       
+    }
  }
 }
 </script>
